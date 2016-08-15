@@ -1,6 +1,6 @@
 # virustotal
-This is a PHP library for the [VirusTotal.COM
-API](https://www.virustotal.com/de/documentation/public-api/). It's based upon
+This is a PHP library for the [VirusTotal.COM public API version
+2.0](https://www.virustotal.com/de/documentation/public-api/). It's based upon
 [the work of Adrian at
 www.TheWebHelp.com](https://www.thewebhelp.com/php/scripts/virustotal-php-api/).
 As Adrian didn't include a license with his work, I didn't either (I cannot
