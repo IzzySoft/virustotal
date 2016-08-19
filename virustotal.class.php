@@ -49,6 +49,69 @@ class virustotal {
     $this->api_key = $api_key;
   }
 
+  /** Ask VirusTotal to rescan an already submitted file
+   * @class virustotal
+   * @method rescan
+   * @param str hash    File Hash (MD5/SHA256) of the file to rescan
+   * @param str maxage  max age (in days) for an already existing result set. If it's newer, we won't ask for a rescan but stick with that. Set to 0 to enforce a rescan.
+   * @return number haveResults -99: got no response; -1: error; 0: file is enqueued, 1: results ready; use self::getResponse() to obtain details;
+   *                            other negative values: other errors (most likely unknown / not described in API and should not happen)
+   * @info Note that the -99 (got no response) return code usually means you've exceeded the limits of your key (i.e. 4 requests per minute for a public key)
+   */
+  function rescan($hash,$maxage=7) {
+    if ( empty($hash) ) {
+      $this->json_response = json_encode(['error'=>"virustotal::rescan needs a hash but got an empty string"]);
+      return -1;
+    }
+    $maxage = abs($maxage) * 86400;     // convert to seconds
+    if ( $maxage > 86399 ) {
+      $res = $this->checkFile('',$hash);  // check for existing results
+      switch ($res) {
+        case -99:                     // API limit exceeded
+        case  -1:                     // some error occured
+        case   0: return $res; break; // file still queued, so no results yet at all
+        case   1: break;              // we got a result, so do not yet return :)
+        default : return $res; break; // unknown error
+      }
+
+      // still here? So we've got a result to examine:
+      $resp = json_decode($this->json_response)->scan_date;   // "YYYY-MM-DD HH:MI:SS"
+      if ( time() - strtotime($resp) < $maxage ) return 1;    // result still valid
+    }
+
+    // still here? OK, so we really initiate a rescan:
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://www.virustotal.com/vtapi/v2/file/rescan');
+    curl_setopt($ch, CURLOPT_POST,1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, ['apikey'=>$this->api_key, 'resource'=>$hash]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
+    $api_reply = curl_exec ($ch);
+    curl_close ($ch);
+
+    $api_reply = json_decode($api_reply)->response_code;
+    if ( $api_reply === '' ) $api_reply = -99;
+
+    // continue depending on the result
+    switch ( $api_reply ) {
+       case  1 :  // successfully enqueued for rescan
+                  $this->json_response = json_encode(['verbose_msg'=>'Rescan scheduled','response_code'=>$api_reply]);
+                  return 0;
+                  break;
+       case  0 :  // hash not known to the service
+                  $this->json_response = json_encode(['response_code'=>0,'verbose_msg'=>'virustotal::rescan: hash unknown to VirusTotal, no rescan possible']);
+                  return -1;
+                  break;
+       case -99:  // we've got no response (API limit exceeded?)
+                  $this->json_response = json_encode(['response_code'=>-99,'verbose_msg'=>'Got empty response from VirusTotal']);
+                  return -99;
+                  break;
+       default :  // some error occured
+                  $this->json_response = json_encode(['response_code'=>$api_reply,'error'=>'API error: an unknown error occured']);
+                  return -1;
+                  break;
+    }
+  }
+
   /** Check a file and get the results
    * @class virustotal
    * @method checkFile
