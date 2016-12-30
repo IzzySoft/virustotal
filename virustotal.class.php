@@ -88,13 +88,19 @@ class virustotal {
     $api_reply = curl_exec ($ch);
     curl_close ($ch);
 
-    $api_reply = json_decode($api_reply)->response_code;
-    if ( $api_reply === '' ) $api_reply = -99;
+    $reply = json_decode($api_reply);
+    try {
+        $api_rc = $reply->response_code;
+    } catch (Exception $e) {
+        $api_rc = -99;
+    }
+    if ( $api_rc === '' ) $api_reply = -99;
 
     // continue depending on the result
-    switch ( $api_reply ) {
+    switch ( $api_rc ) {
        case  1 :  // successfully enqueued for rescan
-                  $this->json_response = json_encode(['verbose_msg'=>'Rescan scheduled','response_code'=>$api_reply]);
+                  $this->json_response = json_encode(['scan_id'=>$reply->scan_id,'sha256'=>$reply->sha256,'resource'=>$reply->resource,'permalink'=>$reply->permalink,'verbose_msg'=>'Rescan scheduled','response_code'=>$api_rc]);
+                  //$this->json_response = json_encode('verbose_msg'=>'Rescan scheduled','response_code'=>$api_rc]);
                   return 0;
                   break;
        case  0 :  // hash not known to the service
@@ -102,7 +108,7 @@ class virustotal {
                   return -1;
                   break;
        case -99:  // we've got no response (API limit exceeded?)
-                  $this->json_response = json_encode(['response_code'=>-99,'verbose_msg'=>'Got empty response from VirusTotal']);
+                  $this->json_response = json_encode(['response_code'=>-99,'verbose_msg'=>'Got empty response from VirusTotal. API limit exceeded?']);
                   return -99;
                   break;
        default :  // some error occured
