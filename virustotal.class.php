@@ -21,6 +21,12 @@ class virustotal {
    */
   private $api_key = '';
 
+  /** Enable debug output
+   * @class virustotal
+   * @attribute bool debug
+   */
+  private $debug = false;
+
   /** last JSON response from service (or empty if not yet retrieved)
    * @class virustotal
    * @attribute protected array json_response
@@ -150,6 +156,7 @@ class virustotal {
     ( $api_reply === '' ) ? $api_reply_array = ['response_code'=>-99,'verbose_msg'=>'Got empty response from VirusTotal'] : $api_reply_array = json_decode($api_reply, true);
 
     // continue depending on the result
+    $api_reply_array['step'] = 'CheckFile';
     switch ( $api_reply_array['response_code'] ) {
        case -99:  // we've got no response (API limit exceeded?)
                   $this->json_response = json_encode($api_reply_array);
@@ -166,16 +173,19 @@ class virustotal {
        case  0 :  // file not yet known to the service
                   if ( !empty($fileName) ) { // self::json_response will be set by self::uploadFile
                     if ( $this->uploadFile($fileName) ) return 0; // results are not available immediately
+                    if ($this->debug) print_r($api_reply_array);
                     return -1; // an error occured during upload
                   } else {
                     $api_reply_array['error'] = "virustotal::checkFile: hash unknown to VirusTotal and file '$fileNamePassed' could not be found";
                     $this->json_response = json_encode($api_reply_array);
+                    if ($this->debug) print_r($api_reply_array);
                     return -1;
                   }
                   break;
        default :  // some error occured
                   $api_reply_array['error'] = 'API error: '.$api_reply_array['verbose_msg'];
                   $this->json_response = json_encode($api_reply_array);
+                  if ($this->debug) print_r($api_reply_array);
                   return -1;
                   break;
     }
@@ -198,7 +208,8 @@ class virustotal {
 
     $post_url = 'https://www.virustotal.com/vtapi/v2/file/scan';
     $post['apikey'] = $this->api_key;
-    $post['file'] = '@'.$fileName;
+    $cfile = new CURLFile($fileName,'application/octet-stream');
+    $post['file'] = $cfile;
 
     // get a special URL for uploading files larger than 32MB (up to 200MB)
     if($file_size_mb >= 32) {// get a special URL for uploading files larger than 32MB (up to 200MB)
@@ -212,10 +223,12 @@ class virustotal {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL,$post_url);
     curl_setopt($ch, CURLOPT_POST,1);
+    curl_setopt($ch, CURLOPT_POST,1);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
     $api_reply = curl_exec ($ch);
     curl_close ($ch);
+
 
     // now evaluate results
     $api_reply_array = json_decode($api_reply, true);
@@ -225,7 +238,9 @@ class virustotal {
         return TRUE;
     } else {
         $api_reply_array['error'] = 'API error: '.$api_reply_array['verbose_msg'];
+        $api_reply_array['step'] = 'Upload';
         $this->json_response = json_encode($api_reply_array);
+        if ($this->debug) print_r($api_reply_array);
         return FALSE;
     }
   }
