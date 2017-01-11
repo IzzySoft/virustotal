@@ -205,10 +205,12 @@ class virustotal {
     }
 
     $file_size_mb = filesize($fileName)/1024/1024;     // get the file size in mb, we will use it to know at what url to send for scanning (it's a different URL for over 30MB)
+    $mimetype = mime_content_type($fileName);
+    if ( empty($mimetype) ) $mimetype = 'application/octet-stream';
 
     $post_url = 'https://www.virustotal.com/vtapi/v2/file/scan';
     $post['apikey'] = $this->api_key;
-    $cfile = new CURLFile($fileName,'application/octet-stream');
+    $cfile = new CURLFile($fileName,$mimetype);
     $post['file'] = $cfile;
 
     // get a special URL for uploading files larger than 32MB (up to 200MB)
