@@ -95,9 +95,9 @@ class virustotal {
     curl_close ($ch);
 
     $reply = json_decode($api_reply);
-    try {
+    if ( property_exists($reply,'response_code') ) {
         $api_rc = $reply->response_code;
-    } catch (Exception $e) {
+    } else {
         $api_rc = -99;
     }
     if ( $api_rc === '' ) $api_reply = -99;
@@ -152,7 +152,7 @@ class virustotal {
 
     // first check if a report for this file already exists, so we don't need to upload
     $report_url = 'https://www.virustotal.com/vtapi/v2/file/report?apikey='.$this->api_key."&resource=".$hash;
-    $api_reply = file_get_contents($report_url);
+    if ( ! $api_reply = @file_get_contents($report_url) ) $api_reply = '';
     ( $api_reply === '' ) ? $api_reply_array = ['response_code'=>-99,'verbose_msg'=>'Got empty response from VirusTotal'] : $api_reply_array = json_decode($api_reply, true);
 
     // continue depending on the result
