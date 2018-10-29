@@ -39,7 +39,7 @@ class virustotal {
    *    * response_code (int), verbose_msg (str)
    *    * also hashes/identifiers: sha256, sha1, md5, scan_id, resource
    */
-  protected $json_response = [];
+  public $json_response = [];
 
   /** ScanID we can use to query the state for this file
    * @class virustotal
@@ -95,7 +95,7 @@ class virustotal {
     curl_close ($ch);
 
     $reply = json_decode($api_reply);
-    if ( property_exists($reply,'response_code') ) {
+    if ( is_object($reply) && property_exists($reply,'response_code') ) {
         $api_rc = $reply->response_code;
     } else {
         $api_rc = -99;
