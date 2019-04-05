@@ -40,3 +40,10 @@ the final scan results), please consult the [VirusTotal API
 documentation](https://www.virustotal.com/de/documentation/public-api/). For
 details on the PHP class in this repository, consult the code. You should find
 it well documented :)
+
+
+## Contribute
+You like this library and want to contribute?
+
+* Pull Requests are welcome!
+* Motivate me e.g. by sending me some mBTC to `1FsfvUGUpoPkLvJboKAnuBXHZ1zN3hbBL1` :)
