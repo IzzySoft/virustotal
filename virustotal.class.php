@@ -130,7 +130,7 @@ class virustotal {
    * @info at least one of fileName or file_hash (or both) must be provided -- they cannot be both empty, or we don't know what to check :)
    * @param optional string fileName    Name of the file to check. We must be able to access it by this name, so include path if needed
    * @param optional string hash        File Hash (MD5/SHA256) or Scan ID to use. If not passed, hash will be calculated. Scan ID gives more details on queue status.
-   * @return number haveResults         -99: got no response; -1: error; 0: no results, 1: results ready; use self::getResponse() to obtain details;
+   * @return number haveResults         -99: got no response; -90: error on upload; -1: error; 0: no results, 1: results ready; use self::getResponse() to obtain details;
    *                                    self::getScanId for the ScanID (set only after initial enqueue, i.e. upload of the file)
    *                                    other negative values: other errors (most likely unknown / not described in API and should not happen)
    * @info Note that the -99 (got no response) return code usually means you've exceeded the limits of your key (i.e. 4 requests per minute for a public key)
@@ -174,7 +174,7 @@ class virustotal {
                   if ( !empty($fileName) ) { // self::json_response will be set by self::uploadFile
                     if ( $this->uploadFile($fileName) ) return 0; // results are not available immediately
                     if ($this->debug) print_r($api_reply_array);
-                    return -1; // an error occured during upload
+                    return -90; // an error occured during upload
                   } else {
                     $api_reply_array['error'] = "virustotal::checkFile: hash unknown to VirusTotal and file '$fileNamePassed' could not be found";
                     $this->json_response = json_encode($api_reply_array);
@@ -217,8 +217,12 @@ class virustotal {
     if($file_size_mb >= 32) {// get a special URL for uploading files larger than 32MB (up to 200MB)
         $api_reply = @file_get_contents('https://www.virustotal.com/vtapi/v2/file/scan/upload_url?apikey='.$this->api_key);
         $api_reply_array = json_decode($api_reply, true);
-        if ( isset($api_reply_array['upload_url']) and $api_reply_array['upload_url']!='' )
+        if ( isset($api_reply_array['upload_url']) and $api_reply_array['upload_url']!='' ) {
             $post_url = $api_reply_array['upload_url'];
+        } else {
+            $this->json_response = json_encode(['error'=>"Failed to obtain special URL for big file '$fileName'. Make sure you got the extra privilege."]);
+            return false;
+        }
     }
 
     // send the file for checking
